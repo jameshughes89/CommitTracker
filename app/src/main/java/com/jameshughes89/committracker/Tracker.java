@@ -126,6 +126,18 @@ public class Tracker {
     }
 
 
+    private void updateDescription(String HTMLtext){
+
+    }
+
+    private void updateCommitUser(String HTMLtext){
+
+    }
+
+    private void updateCommitUserPicture(String HTMLtext){
+
+    }
+
 
     // A bunch of getters follow. Some may not be needed
 
