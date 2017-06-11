@@ -8,9 +8,7 @@ package com.jameshughes89.committracker;
 
 class NoPatternFoundException extends Exception {
 
-
     NoPatternFoundException() {}
-
 
     NoPatternFoundException(String message)
     {
