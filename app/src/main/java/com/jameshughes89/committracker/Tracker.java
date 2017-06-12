@@ -1,6 +1,7 @@
 package com.jameshughes89.committracker;
 
-import android.graphics.Picture;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
@@ -29,7 +30,10 @@ public class Tracker {
 
     // REGEX: The tags for the different details from the HTML text
     // THIS IS WHAT WILL NEED TO BE UPDATED IF THE HTML TAGS EVER CHANGE ON GITHUB
-    private final String TIME_TAG_REGEX = "<relative-time datetime=\"(.+?)\">";
+    private final String REGEX_TIME = "<relative-time datetime=\"(.+?)\">";
+    private final String REGEX_DESCRIPTION = "class=\"message\" data-pjax=\"true\" title=\"(.+?)\">";
+    private final String REGEX_USER = "rel=\"author\">(.+?)</a></span>";        // TODO Check on this one. idk difference between author and committer or whatever.
+    private final String REGEX_USER_AVATAR = "class=\"avatar\" height=\"20\" src=\"(.+?)\" width=\"20\" />";
 
     // These should stay the same throughout the lifetime of the Tracker
     private String projectUser;
@@ -41,7 +45,7 @@ public class Tracker {
     private String commitTimeDelta;
     private String commitDescription;
     private String commitUser;
-    private Picture commitUserPicture;
+    private Bitmap commitUserAvatar;
 
     /**
      * Default constructor. Basically useless. Should never get called.
@@ -71,7 +75,7 @@ public class Tracker {
      * - commitTime
      * - commitDescription
      * - commitUser
-     * - commitUserPicture
+     * - commitUserAvatar
      *
      * Will read the URL details and put it into one long string.
      */
@@ -79,11 +83,12 @@ public class Tracker {
         try{
             String HTMLtext = getHTMLtext();
             updateTimeAndTimeDelta(HTMLtext);
+            updateDescription(HTMLtext);
+            updateCommitUser(HTMLtext);
         }
         catch (IOException | ParseException | NoPatternFoundException e){
             // Currently do nothing? This may make sense... Just leave things alone. Maybe a popup?
         }
-
     }
 
     /**
@@ -109,15 +114,15 @@ public class Tracker {
      *
      * @param HTMLtext HTML text from the project's website.
      * @throws ParseException Will be thrown if the DateFormat's parse() doesn't work out.
+     * @throws NoPatternFoundException Will be thrown if the regex can't be found.
      */
     private void updateTimeAndTimeDelta(String HTMLtext) throws ParseException, NoPatternFoundException{
 
         // Finds the string for the date
-        final Pattern pattern = Pattern.compile(TIME_TAG_REGEX);
+        final Pattern pattern = Pattern.compile(REGEX_TIME);
         final Matcher matcher = pattern.matcher(HTMLtext);
 
         if (matcher.find()){
-            System.out.println(matcher.group(1)); // Prints String I want to extract
             String commitDateTimeString = matcher.group(1);
 
             // Get a nice, more *normal* version of the commit time. This will also be local time zone too.
@@ -230,17 +235,74 @@ public class Tracker {
         */
     }
 
+    /**
+     * Updates the commit description from the repo.
+     *
+     * @param HTMLtext HTML text from the project's website.
+     * @throws NoPatternFoundException Will be thrown if the regex can't be found.
+     */
+    private void updateDescription(String HTMLtext) throws NoPatternFoundException{
 
-    private void updateDescription(String HTMLtext){
+        // Finds the string for the commit message
+        final Pattern pattern = Pattern.compile(REGEX_DESCRIPTION);
+        final Matcher matcher = pattern.matcher(HTMLtext);
 
+        if (matcher.find()){
+            commitDescription = matcher.group(1);
+        }
+        else{
+            throw new NoPatternFoundException();
+        }
     }
 
-    private void updateCommitUser(String HTMLtext){
+    /**
+     * Updates who the last committer was (the user).
+     *
+     * WARNING: This might be broken. Look into the REGEX and what I should look for.
+     *          Does this work if multiple people are working on the same public repo?
+     *          Does this only work now because I was doing to to a repo I also created?
+     *          How will this work on private repos?
+     *
+     * @param HTMLtext HTML text from the project's website.
+     * @throws NoPatternFoundException Will be thrown if the regex can't be found.
+     */
+    private void updateCommitUser(String HTMLtext) throws NoPatternFoundException{
 
+        // Finds the string for the commit message
+        final Pattern pattern = Pattern.compile(REGEX_USER);
+        final Matcher matcher = pattern.matcher(HTMLtext);
+
+        if (matcher.find()){
+            commitUser = matcher.group(1);
+        }
+        else{
+            throw new NoPatternFoundException();
+        }
     }
 
-    private void updateCommitUserPicture(String HTMLtext){
+    /**
+     *
+     * Updates the last user to commit's avatar.
+     *
+     * @param HTMLtext HTML text from the project's website.
+     * @throws IOException Will be thrown if the input stream from the avatar URL doesn't work out.
+     * @throws MalformedURLException Will be thrown if the URL for the picture doesn't work out. (I know that it's a subclass of IOException, but whatevs)
+     * @throws NoPatternFoundException Will be thrown if the regex can't be found.
+     */
+    private void updateCommitUserPicture(String HTMLtext) throws IOException, MalformedURLException, NoPatternFoundException{
 
+        // Finds the string for the commit message
+        final Pattern pattern = Pattern.compile(REGEX_USER_AVATAR);
+        final Matcher matcher = pattern.matcher(HTMLtext);
+
+        if (matcher.find()){
+            String commitUserAvatarURLString = matcher.group(1);
+            URL commitUserAvatarURL = new URL(commitUserAvatarURLString);
+            commitUserAvatar = BitmapFactory.decodeStream(commitUserAvatarURL.openConnection().getInputStream());
+        }
+        else{
+            throw new NoPatternFoundException();
+        }
     }
 
 
@@ -270,8 +332,8 @@ public class Tracker {
         return commitUser;
     }
 
-    public Picture getCommitUserPicture() {
-        return commitUserPicture;
+    public Bitmap getCommitUserAvatar() {
+        return commitUserAvatar;
     }
 
 }
